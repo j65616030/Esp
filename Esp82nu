@@ -1,0 +1,29 @@
+#include <ESP8266WiFi.h>
+#include <EEPROM.h>
+
+const char* ssid = "Red_Falsa";
+const char* password = "";
+
+WiFiEventHandler stationConnectedHandler;
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.softAP(ssid, password);
+  EEPROM.begin(512);
+  stationConnectedHandler = WiFi.onSoftAPModeStationConnected([](const WiFiEventStationModeConnected& evt) {
+    Serial.println("Usuario conectado");
+    Serial.print("Dirección MAC: ");
+    Serial.println(evt.mac_addr); // Utiliza mac_addr en lugar de mac
+    Serial.print("IP: ");
+    Serial.println(evt.ip); // La propiedad ip está disponible en el objeto evt
+    // La contraseña no se puede obtener directamente desde el objeto evt
+    // Debes almacenar la contraseña en una variable o estructura de datos cuando se configura el punto de acceso
+    // String contraseña = WiFi.softAPgetStationPassword(evt.station); // Esta línea no es válida
+    // EEPROM.put(0, contraseña); // Esta línea no es válida
+    // EEPROM.commit(); // Esta línea no es válida
+  });
+}
+
+void loop() {
+  // No es necesario hacer nada aquí
+}
