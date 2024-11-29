@@ -1,0 +1,70 @@
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <EEPROM.h>
+
+const char* ssid = "Red_Falsa";
+const char* password = "contraseña_inicial"; // Contraseña inicial para el punto de acceso
+
+ESP8266WebServer server(80);
+
+WiFiEventHandler stationConnectedHandler;
+
+void setup() {
+  Serial.begin(115200);
+  EEPROM.begin(512);
+  
+  // Leer la contraseña almacenada en la EEPROM
+  String contraseña_almacenada = leerContraseñaAlmacenada();
+  
+  if (contraseña_almacenada.length() > 0) {
+    password = contraseña_almacenada.c_str();
+  }
+  
+  // Configurar el punto de acceso con la contraseña
+  WiFi.softAPConfig(IPAddress(192, 168, 1, 1), IPAddress(192, 168, 1, 1), IPAddress(255, 255, 255, 0));
+  WiFi.softAP(ssid, password, 1, 0, WPA2_PSK);
+  
+  // Iniciar el servidor web
+  server.on("/", handleRoot);
+  server.on("/guardar_contraseña", handleGuardarContraseña);
+  server.begin();
+  
+  stationConnectedHandler = WiFi.onSoftAPModeStationConnected([](const WiFiEventStationModeConnected& evt) {
+    Serial.println("Usuario conectado");
+    Serial.print("Dirección MAC: ");
+    Serial.println(evt.mac_addr);
+    Serial.print("IP: ");
+    Serial.println(evt.ip);
+  });
+}
+
+void loop() {
+  server.handleClient();
+}
+
+void handleRoot() {
+  String html = "<html><body><h1>Ingrese la contraseña</h1><form action=\"/guardar_contraseña\" method=\"post\"><input type=\"password\" name=\"contraseña\"><input type=\"submit\" value=\"Guardar\"></form></body></html>";
+  server.send(200, "text/html", html);
+}
+
+void handleGuardarContraseña() {
+  String contraseña = server.arg("contraseña");
+  guardarContraseña(contraseña);
+  server.send(200, "text/plain", "Contraseña guardada correctamente");
+}
+
+void guardarContraseña(String contraseña) {
+  EEPROM.put(0, contraseña);
+  EEPROM.commit();
+}
+
+String leerContraseñaAlmacenada() {
+  String contraseña_almacenada = "";
+  char c;
+  EEPROM.get(0, c);
+  while (c != '\0') {
+    contraseña_almacenada += c;
+    EEPROM.get(contraseña_almacenada.length() + 1, c);
+  }
+  return contraseña_almacenada;
+}
